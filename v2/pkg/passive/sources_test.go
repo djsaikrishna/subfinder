@@ -33,7 +33,6 @@ var (
 		"hackertarget",
 		"intelx",
 		"netlas",
-		"passivetotal",
 		"quake",
 		"rapiddns",
 		"redhuntlabs",
@@ -53,6 +52,7 @@ var (
 		// "threatminer",
 		// "reconcloud",
 		"builtwith",
+		"hudsonrock",
 	}
 
 	expectedDefaultSources = []string{
@@ -73,7 +73,6 @@ var (
 		"fullhunt",
 		"hackertarget",
 		"intelx",
-		"passivetotal",
 		"quake",
 		"redhuntlabs",
 		"robtex",
@@ -96,11 +95,9 @@ var (
 		"bufferover",
 		"certspotter",
 		"crtsh",
-		"dnsdumpster",
 		"dnsdb",
 		"digitorus",
 		"hackertarget",
-		"passivetotal",
 		"securitytrails",
 		"virustotal",
 		"leakix",

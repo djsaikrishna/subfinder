@@ -1,5 +1,5 @@
-// Package dnsdumpster logic
-package dnsdumpster
+// Package hudsonrock logic
+package hudsonrock
 
 import (
 	"context"
@@ -10,22 +10,22 @@ import (
 	"github.com/projectdiscovery/subfinder/v2/pkg/subscraping"
 )
 
-type response struct {
-	A []struct {
-		Host string `json:"host"`
-	} `json:"a"`
-	Ns []struct {
-		Host string `json:"host"`
-	} `json:"ns"`
+type hudsonrockResponse struct {
+	Data struct {
+		EmployeesUrls []struct {
+			URL string `json:"url"`
+		} `json:"employees_urls"`
+		ClientsUrls []struct {
+			URL string `json:"url"`
+		} `json:"clients_urls"`
+	} `json:"data"`
 }
 
 // Source is the passive scraping agent
 type Source struct {
-	apiKeys   []string
 	timeTaken time.Duration
 	errors    int
 	results   int
-	skipped   bool
 }
 
 // Run function returns all subdomains found with the service
@@ -40,13 +40,7 @@ func (s *Source) Run(ctx context.Context, domain string, session *subscraping.Se
 			close(results)
 		}(time.Now())
 
-		randomApiKey := subscraping.PickRandom(s.apiKeys, s.Name())
-		if randomApiKey == "" {
-			s.skipped = true
-			return
-		}
-
-		resp, err := session.Get(ctx, fmt.Sprintf("https://api.dnsdumpster.com/domain/%s", domain), "", map[string]string{"X-API-Key": randomApiKey})
+		resp, err := session.SimpleGet(ctx, fmt.Sprintf("https://cavalier.hudsonrock.com/api/json/v2/osint-tools/urls-by-domain?domain=%s", domain))
 		if err != nil {
 			results <- subscraping.Result{Source: s.Name(), Type: subscraping.Error, Error: err}
 			s.errors++
@@ -55,7 +49,7 @@ func (s *Source) Run(ctx context.Context, domain string, session *subscraping.Se
 		}
 		defer resp.Body.Close()
 
-		var response response
+		var response hudsonrockResponse
 		err = json.NewDecoder(resp.Body).Decode(&response)
 		if err != nil {
 			results <- subscraping.Result{Source: s.Name(), Type: subscraping.Error, Error: err}
@@ -64,9 +58,11 @@ func (s *Source) Run(ctx context.Context, domain string, session *subscraping.Se
 			return
 		}
 
-		for _, record := range append(response.A, response.Ns...) {
-			results <- subscraping.Result{Source: s.Name(), Type: subscraping.Subdomain, Value: record.Host}
-			s.results++
+		for _, record := range append(response.Data.EmployeesUrls, response.Data.ClientsUrls...) {
+			for _, subdomain := range session.Extractor.Extract(record.URL) {
+				results <- subscraping.Result{Source: s.Name(), Type: subscraping.Subdomain, Value: subdomain}
+				s.results++
+			}
 		}
 
 	}()
@@ -76,11 +72,11 @@ func (s *Source) Run(ctx context.Context, domain string, session *subscraping.Se
 
 // Name returns the name of the source
 func (s *Source) Name() string {
-	return "dnsdumpster"
+	return "hudsonrock"
 }
 
 func (s *Source) IsDefault() bool {
-	return true
+	return false
 }
 
 func (s *Source) HasRecursiveSupport() bool {
@@ -88,11 +84,11 @@ func (s *Source) HasRecursiveSupport() bool {
 }
 
 func (s *Source) NeedsKey() bool {
-	return true
+	return false
 }
 
-func (s *Source) AddApiKeys(keys []string) {
-	s.apiKeys = keys
+func (s *Source) AddApiKeys(_ []string) {
+	// no key needed
 }
 
 func (s *Source) Statistics() subscraping.Statistics {
@@ -100,6 +96,5 @@ func (s *Source) Statistics() subscraping.Statistics {
 		Errors:    s.errors,
 		Results:   s.results,
 		TimeTaken: s.timeTaken,
-		Skipped:   s.skipped,
 	}
 }
